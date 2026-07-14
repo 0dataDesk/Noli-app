@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Insumos — NOLI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div class="page">
+    <div class="topbar">
+      <div class="brand">
+        <span>NOLI</span>
+        <h1>Insumos</h1>
+      </div>
+      <a class="back-link" href="index.html">← Inicio</a>
+    </div>
+
+    <div class="card">
+      <div class="toolbar">
+        <input type="search" id="buscador" placeholder="Buscar insumo por nombre…" />
+        <div class="spacer"></div>
+        <button class="btn-primary" id="btn-nuevo">+ Nuevo insumo</button>
+      </div>
+
+      <div id="contenido">
+        <div class="loading">Cargando insumos…</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-overlay" hidden>
+    <div class="modal">
+      <h2 id="modal-title">Nuevo insumo</h2>
+      <form id="form-insumo">
+        <input type="hidden" id="f-id" />
+        <div class="field">
+          <label for="f-nombre">Nombre</label>
+          <input type="text" id="f-nombre" required />
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="f-unidad">Unidad de medida</label>
+            <select id="f-unidad" required>
+              <option value="g">g</option>
+              <option value="ml">ml</option>
+              <option value="kg">kg</option>
+              <option value="l">l</option>
+              <option value="pieza">pieza</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="f-costo">Costo unitario (MXN)</label>
+            <input type="number" id="f-costo" step="0.0001" min="0" placeholder="Pendiente" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="f-proveedor">Proveedor</label>
+          <input type="text" id="f-proveedor" />
+        </div>
+        <div class="field" id="campo-activo" hidden>
+          <label><input type="checkbox" id="f-activo" style="width:auto;display:inline-block;margin-right:8px;" /> Activo</label>
+        </div>
+        <div id="notas-revision-box" hidden style="font-size:13px;color:var(--amber);margin-bottom:12px;"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" id="btn-eliminar" hidden>Desactivar</button>
+          <button type="button" class="btn-ghost" id="btn-cancelar">Cancelar</button>
+          <button type="submit" class="btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script src="js/supabaseClient.js"></script>
+  <script src="js/insumos.js"></script>
+</body>
+</html>

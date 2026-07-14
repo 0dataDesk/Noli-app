@@ -1,0 +1,2 @@
+const SUPABASE_URL = 'https://bnsrxjuerbejkcroddax.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJuc3J4anVlcmJlamtjcm9kZGF4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwNTI3ODIsImV4cCI6MjA5OTYyODc4Mn0.xRJjTHhgKLDW5We6Al827g3DQuoMayS3KCpGCBSvhlc';

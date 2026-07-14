@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Recetas — NOLI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div class="page">
+    <div class="topbar">
+      <div class="brand">
+        <span>NOLI</span>
+        <h1 id="page-title">Recetas</h1>
+      </div>
+      <a class="back-link" id="top-link" href="index.html">← Inicio</a>
+    </div>
+
+    <!-- Vista lista -->
+    <div id="vista-lista">
+      <div class="toolbar">
+        <input type="search" id="buscador" placeholder="Buscar receta por nombre…" />
+      </div>
+      <div id="contenido-lista">
+        <div class="loading">Cargando recetas…</div>
+      </div>
+    </div>
+
+    <!-- Vista detalle -->
+    <div id="vista-detalle" hidden></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script src="js/supabaseClient.js"></script>
+  <script src="js/recetas.js"></script>
+</body>
+</html>

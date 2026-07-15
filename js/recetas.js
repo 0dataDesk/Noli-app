@@ -261,9 +261,8 @@ function pintarDetalle(receta, resumen, lineas, pasos, insumosActivos) {
           <div id="lista-pasos">${filasPasos}</div>
           <button type="button" class="btn-ghost btn-sm" id="btn-agregar-paso" style="margin-top:8px;">+ Agregar paso</button>
 
-          <div class="modal-actions" style="justify-content:space-between;">
+          <div class="modal-actions" style="justify-content:flex-start;">
             <button type="button" class="btn-danger" id="btn-desactivar-receta">Desactivar receta</button>
-            <button type="submit" class="btn-primary">Guardar cambios</button>
           </div>
         </form>
       </div>
@@ -306,6 +305,8 @@ function pintarDetalle(receta, resumen, lineas, pasos, insumosActivos) {
         </div>
       </div>
     </div>
+
+    <button type="submit" form="form-receta" class="btn-primary btn-save-floating" id="btn-guardar-flotante">Guardar cambios</button>
   `;
 
   attachDetalleHandlers(receta.id, resumen.costo_total);

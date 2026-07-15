@@ -216,4 +216,9 @@ btnEliminar.addEventListener('click', async () => {
   await cargarInsumos();
 });
 
-cargarInsumos();
+(async () => {
+  const session = await requireSession();
+  if (!session) return;
+  wireSessionUI(session);
+  cargarInsumos();
+})();

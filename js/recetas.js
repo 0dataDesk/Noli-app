@@ -421,4 +421,9 @@ function attachDetalleHandlers(recetaId) {
   });
 }
 
-render();
+(async () => {
+  const session = await requireSession();
+  if (!session) return;
+  wireSessionUI(session);
+  render();
+})();

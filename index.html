@@ -10,6 +10,9 @@
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
+  <button type="button" class="back-link" id="btn-logout">Cerrar sesión</button>
+  <span class="session-email" id="session-email"></span>
+
   <div class="page">
     <section class="hero">
       <span class="eyebrow">Backoffice interno</span>
@@ -30,5 +33,16 @@
       </a>
     </nav>
   </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script src="js/supabaseClient.js"></script>
+  <script>
+    (async () => {
+      const session = await requireSession();
+      if (!session) return;
+      wireSessionUI(session);
+    })();
+  </script>
 </body>
 </html>

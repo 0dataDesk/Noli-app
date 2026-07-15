@@ -90,6 +90,7 @@ function pintarLista(lista) {
   });
 
   const categorias = Object.keys(grupos).sort();
+  const buscando = buscador.value.trim() !== '';
 
   contenidoLista.innerHTML = categorias.map((cat) => {
     const items = grupos[cat];
@@ -110,7 +111,7 @@ function pintarLista(lista) {
     }).join('');
 
     return `
-      <div class="categoria-group">
+      <div class="categoria-group${buscando ? '' : ' collapsed'}">
         <div class="categoria-header">
           <h2>${cat}</h2>
           <span class="count">${items.length} receta${items.length === 1 ? '' : 's'}</span>
@@ -247,6 +248,19 @@ function pintarDetalle(receta, resumen, lineas, pasos, insumosActivos) {
 
       <div>
         <div class="card" style="margin-bottom:20px;">
+          <div class="section-title" style="margin-top:0;">Ingredientes</div>
+          <div id="lista-ingredientes">${filasIngredientes}</div>
+          <div style="display:flex;gap:8px;margin-top:12px;">
+            <select id="nuevo-ingrediente-insumo" style="flex:2;">
+              <option value="">Agregar insumo…</option>
+              ${opcionesInsumo}
+            </select>
+            <input type="number" id="nuevo-ingrediente-cantidad" placeholder="Cant." step="0.001" min="0" style="flex:1;" />
+            <button type="button" class="btn-ghost btn-sm" id="btn-agregar-ingrediente">+</button>
+          </div>
+        </div>
+
+        <div class="card">
           <div class="section-title" style="margin-top:0;">Costeo</div>
           <div class="costeo-summary">
             <div class="costeo-row"><span>Costo total insumos</span><strong>${resumen.costo_total != null ? moneyFmt.format(resumen.costo_total) : '—'}</strong></div>
@@ -264,19 +278,6 @@ function pintarDetalle(receta, resumen, lineas, pasos, insumosActivos) {
               <span class="label">Precio final</span>
               <span class="value">${resumen.precio_final != null ? moneyFmt.format(resumen.precio_final) : '—'}</span>
             </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="section-title" style="margin-top:0;">Ingredientes</div>
-          <div id="lista-ingredientes">${filasIngredientes}</div>
-          <div style="display:flex;gap:8px;margin-top:12px;">
-            <select id="nuevo-ingrediente-insumo" style="flex:2;">
-              <option value="">Agregar insumo…</option>
-              ${opcionesInsumo}
-            </select>
-            <input type="number" id="nuevo-ingrediente-cantidad" placeholder="Cant." step="0.001" min="0" style="flex:1;" />
-            <button type="button" class="btn-ghost btn-sm" id="btn-agregar-ingrediente">+</button>
           </div>
         </div>
       </div>

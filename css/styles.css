@@ -1,10 +1,10 @@
 :root {
-  --bg: #1a1410;
-  --surface: #241c16;
-  --surface-alt: #2c2219;
-  --border: rgba(255, 255, 255, 0.09);
+  --bg: #2e2721;
+  --surface: #3a3128;
+  --surface-alt: #453a2f;
+  --border: rgba(255, 255, 255, 0.10);
   --text: #f3ece0;
-  --text-muted: #b3a596;
+  --text-muted: #c4b6a5;
   --accent: #a8542e;
   --accent-hover: #c26339;
   --olive: #6b7d3e;
@@ -53,10 +53,11 @@ a {
 .topbar {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 16px;
   margin-bottom: 28px;
   padding-bottom: 18px;
+  padding-left: 130px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -79,6 +80,12 @@ a {
 }
 
 .back-link {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 50;
+  background: var(--surface);
+  box-shadow: var(--shadow);
   font-size: 13px;
   color: var(--text-muted);
   border: 1px solid var(--border);
@@ -427,8 +434,13 @@ tbody tr.inactive {
   transform: rotate(-90deg);
 }
 
-.categoria-group.collapsed .receta-grid {
+.categoria-group.collapsed .receta-grid,
+.categoria-group.collapsed .categoria-body {
   display: none;
+}
+
+.categoria-body {
+  margin-top: 12px;
 }
 
 .receta-grid {
@@ -626,5 +638,14 @@ tbody tr.inactive {
   }
   .hero h1 {
     font-size: 38px;
+  }
+  .topbar {
+    padding-left: 90px;
+  }
+  .back-link {
+    top: 14px;
+    left: 14px;
+    font-size: 12px;
+    padding: 5px 10px;
   }
 }

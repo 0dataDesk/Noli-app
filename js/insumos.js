@@ -1,6 +1,7 @@
 const moneyFmt = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
 
 let insumos = [];
+let insumoEnEdicion = null;
 
 const contenido = document.getElementById('contenido');
 const buscador = document.getElementById('buscador');
@@ -12,8 +13,6 @@ const fNombre = document.getElementById('f-nombre');
 const fUnidad = document.getElementById('f-unidad');
 const fCosto = document.getElementById('f-costo');
 const fProveedor = document.getElementById('f-proveedor');
-const fActivo = document.getElementById('f-activo');
-const campoActivo = document.getElementById('campo-activo');
 const notasBox = document.getElementById('notas-revision-box');
 const btnEliminar = document.getElementById('btn-eliminar');
 
@@ -30,42 +29,70 @@ async function cargarInsumos() {
   }
 
   insumos = data;
-  renderTabla(insumos);
+  renderAcordeon(insumos);
 }
 
-function renderTabla(lista) {
+function filaHtml(i) {
+  const pendiente = i.costo_unitario === null;
+  return `
+    <tr data-id="${i.id}">
+      <td>${i.nombre}</td>
+      <td>${i.unidad_medida}</td>
+      <td>${pendiente ? '<span class="badge badge-pendiente">Costo pendiente</span>' : moneyFmt.format(i.costo_unitario)}</td>
+      <td>${i.proveedor || '—'}</td>
+      <td>${pendiente ? '<span class="badge badge-pendiente">Pendiente</span>' : '<span class="badge" style="color:var(--olive);border:1px solid var(--olive);background:rgba(107,125,62,0.15);">OK</span>'}</td>
+    </tr>
+  `;
+}
+
+function renderAcordeon(lista) {
   if (lista.length === 0) {
     contenido.innerHTML = '<div class="empty-state">No se encontraron insumos.</div>';
     return;
   }
 
-  const filas = lista.map((i) => {
-    const pendiente = i.costo_unitario === null;
+  const grupos = {};
+  lista.forEach((i) => {
+    if (!grupos[i.categoria]) grupos[i.categoria] = [];
+    grupos[i.categoria].push(i);
+  });
+
+  const categorias = Object.keys(grupos).sort();
+
+  contenido.innerHTML = categorias.map((cat) => {
+    const items = grupos[cat];
+    const filas = items.map(filaHtml).join('');
+
     return `
-      <tr data-id="${i.id}">
-        <td>${i.nombre}</td>
-        <td>${i.unidad_medida}</td>
-        <td>${pendiente ? '<span class="badge badge-pendiente">Costo pendiente</span>' : moneyFmt.format(i.costo_unitario)}</td>
-        <td>${i.proveedor || '—'}</td>
-        <td>${pendiente ? '<span class="badge badge-pendiente">Pendiente</span>' : '<span class="badge" style="color:var(--olive);border:1px solid var(--olive);background:rgba(107,125,62,0.15);">OK</span>'}</td>
-      </tr>
+      <div class="categoria-group">
+        <div class="categoria-header">
+          <h2>${cat}</h2>
+          <span class="count">${items.length} insumo${items.length === 1 ? '' : 's'}</span>
+          <span class="chevron">▾</span>
+        </div>
+        <div class="categoria-body">
+          <table>
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Unidad</th>
+                <th>Costo unitario</th>
+                <th>Proveedor</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>${filas}</tbody>
+          </table>
+        </div>
+      </div>
     `;
   }).join('');
 
-  contenido.innerHTML = `
-    <table>
-      <thead>
-        <tr>
-          <th>Nombre</th>
-          <th>Unidad</th>
-          <th>Costo unitario</th>
-          <th>Proveedor</th>
-          <th>Estado</th>
-        </tr>
-      </thead>
-      <tbody>${filas}</tbody>
-    </table>
-  `;
+  contenido.querySelectorAll('.categoria-header').forEach((header) => {
+    header.addEventListener('click', () => {
+      header.parentElement.classList.toggle('collapsed');
+    });
+  });
 
   contenido.querySelectorAll('tbody tr').forEach((tr) => {
     tr.addEventListener('click', () => abrirEdicion(tr.dataset.id));
@@ -75,20 +102,19 @@ function renderTabla(lista) {
 buscador.addEventListener('input', () => {
   const q = buscador.value.trim().toLowerCase();
   const filtrados = q ? insumos.filter((i) => i.nombre.toLowerCase().includes(q)) : insumos;
-  renderTabla(filtrados);
+  renderAcordeon(filtrados);
 });
 
 function abrirModal(modo, insumo) {
   form.reset();
   notasBox.hidden = true;
-  campoActivo.hidden = modo === 'nuevo';
+  insumoEnEdicion = modo === 'editar' ? insumo : null;
   btnEliminar.hidden = modo === 'nuevo';
 
   if (modo === 'nuevo') {
     modalTitle.textContent = 'Nuevo insumo';
     fId.value = '';
     fUnidad.value = 'g';
-    fActivo.checked = true;
   } else {
     modalTitle.textContent = 'Editar insumo';
     fId.value = insumo.id;
@@ -96,7 +122,7 @@ function abrirModal(modo, insumo) {
     fUnidad.value = insumo.unidad_medida;
     fCosto.value = insumo.costo_unitario ?? '';
     fProveedor.value = insumo.proveedor || '';
-    fActivo.checked = insumo.activo;
+    btnEliminar.textContent = insumo.activo ? 'Desactivar' : 'Reactivar';
 
     if (insumo.notas_revision) {
       notasBox.hidden = false;
@@ -148,7 +174,6 @@ form.addEventListener('submit', async (e) => {
   };
 
   if (fId.value) {
-    payload.activo = fActivo.checked;
     payload.updated_at = new Date().toISOString();
     const { error } = await supabaseClient.from('insumos').update(payload).eq('id', fId.value);
     if (error) {
@@ -169,16 +194,21 @@ form.addEventListener('submit', async (e) => {
 });
 
 btnEliminar.addEventListener('click', async () => {
-  if (!fId.value) return;
-  if (!confirm('¿Desactivar este insumo? No se eliminará el historial.')) return;
+  if (!fId.value || !insumoEnEdicion) return;
+
+  const activarse = !insumoEnEdicion.activo;
+  const mensaje = activarse
+    ? '¿Reactivar este insumo?'
+    : '¿Desactivar este insumo? No se eliminará el historial.';
+  if (!confirm(mensaje)) return;
 
   const { error } = await supabaseClient
     .from('insumos')
-    .update({ activo: false, updated_at: new Date().toISOString() })
+    .update({ activo: activarse, updated_at: new Date().toISOString() })
     .eq('id', fId.value);
 
   if (error) {
-    alert(`Error al desactivar: ${error.message}`);
+    alert(`Error al actualizar estado: ${error.message}`);
     return;
   }
 

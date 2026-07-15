@@ -200,7 +200,7 @@ function pintarDetalle(receta, resumen, lineas, pasos, insumosActivos) {
           línea: ${l.costoLinea != null ? moneyFmt.format(l.costoLinea) : '—'}
         </div>
       </div>
-      <input type="number" step="0.001" min="0" class="ing-cantidad" value="${l.cantidad}" />
+      <input type="number" step="1" min="0" class="ing-cantidad" value="${l.cantidad}" />
       <button type="button" class="btn-ghost btn-sm ing-eliminar" title="Eliminar">✕</button>
     </div>
   `).join('') || '<p style="color:var(--text-muted);font-size:14px;">Sin ingredientes.</p>';
@@ -277,7 +277,7 @@ function pintarDetalle(receta, resumen, lineas, pasos, insumosActivos) {
               <option value="">Agregar insumo…</option>
               ${opcionesInsumo}
             </select>
-            <input type="number" id="nuevo-ingrediente-cantidad" placeholder="Cant." step="0.001" min="0" style="flex:1;" />
+            <input type="number" id="nuevo-ingrediente-cantidad" placeholder="Cant." step="1" min="0" style="flex:1;" />
             <button type="button" class="btn-ghost btn-sm" id="btn-agregar-ingrediente">+</button>
           </div>
         </div>

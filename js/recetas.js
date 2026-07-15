@@ -170,6 +170,22 @@ async function renderDetalle(id) {
   pintarDetalle(receta, resumen, lineas, pasos, insumosActivos);
 }
 
+function calcularPesoTerminado(lineas) {
+  let gramos = 0;
+  let piezas = 0;
+  lineas.forEach((l) => {
+    const unidad = l.insumo.unidad_medida;
+    if (unidad === 'g' || unidad === 'ml') {
+      gramos += l.cantidad;
+    } else if (unidad === 'kg' || unidad === 'l') {
+      gramos += l.cantidad * 1000;
+    } else if (unidad === 'pieza') {
+      piezas += 1;
+    }
+  });
+  return { pesoTexto: `${Math.round(gramos)} g`, piezas };
+}
+
 function pintarDetalle(receta, resumen, lineas, pasos, insumosActivos) {
   const badges = [];
   if (receta.tipo === 'Subreceta') badges.push('<span class="badge badge-subreceta">Subreceta</span>');
@@ -190,6 +206,11 @@ function pintarDetalle(receta, resumen, lineas, pasos, insumosActivos) {
   `).join('') || '<p style="color:var(--text-muted);font-size:14px;">Sin ingredientes.</p>';
 
   const opcionesInsumo = insumosActivos.map((i) => `<option value="${i.id}">${i.nombre}</option>`).join('');
+
+  const { pesoTexto, piezas } = calcularPesoTerminado(lineas);
+  const notaPiezas = piezas > 0
+    ? `<small class="field-hint">+ ${piezas} pieza${piezas === 1 ? '' : 's'} no incluida${piezas === 1 ? '' : 's'} en este cálculo (ej. masa base)</small>`
+    : '';
 
   const filasPasos = pasos.map((p) => `
     <div class="ingrediente-row" data-paso-id="${p.id}" style="grid-template-columns:1fr 32px;">
@@ -220,8 +241,9 @@ function pintarDetalle(receta, resumen, lineas, pasos, insumosActivos) {
               <input type="text" id="d-porcion" value="${receta.porcion_desc || ''}" />
             </div>
             <div class="field">
-              <label for="d-peso">Peso terminado</label>
-              <input type="text" id="d-peso" value="${receta.peso_terminado || ''}" />
+              <label>Peso terminado</label>
+              <div class="computed-value" id="peso-calculado">${pesoTexto}</div>
+              ${notaPiezas}
             </div>
           </div>
           <div class="field-row">
@@ -326,7 +348,6 @@ function attachDetalleHandlers(recetaId, costoTotal) {
       nombre: document.getElementById('d-nombre').value.trim(),
       descripcion: document.getElementById('d-descripcion').value.trim() || null,
       porcion_desc: document.getElementById('d-porcion').value.trim() || null,
-      peso_terminado: document.getElementById('d-peso').value.trim() || null,
       tiempo: document.getElementById('d-tiempo').value.trim() || null,
       tecnica: document.getElementById('d-tecnica').value.trim() || null,
       porcentaje_costo_objetivo: parseFloat(document.getElementById('d-porcentaje').value),

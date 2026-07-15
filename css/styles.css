@@ -1,7 +1,7 @@
 :root {
-  --bg: #2e2721;
-  --surface: #3a3128;
-  --surface-alt: #453a2f;
+  --bg: #241d18;
+  --surface: #3f362c;
+  --surface-alt: #4b4033;
   --border: rgba(255, 255, 255, 0.10);
   --text: #f3ece0;
   --text-muted: #c4b6a5;
@@ -87,7 +87,7 @@ a {
   background: var(--surface);
   box-shadow: var(--shadow);
   font-size: 13px;
-  color: var(--text-muted);
+  color: var(--text);
   border: 1px solid var(--border);
   border-radius: 999px;
   padding: 6px 14px;
@@ -99,26 +99,49 @@ a {
   border-color: var(--accent);
 }
 
-.logout-link {
-  top: 60px;
-  cursor: pointer;
-}
-
-.session-email {
+.session-info {
   position: fixed;
   top: 20px;
   right: 20px;
   z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 12px;
   color: var(--text-muted);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 999px;
   padding: 6px 14px;
-  max-width: 260px;
+  max-width: 280px;
+}
+
+.session-info .session-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.session-info .sep {
+  color: var(--border);
+}
+
+.session-logout {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+}
+
+.session-logout:hover {
+  color: var(--text);
 }
 
 /* Landing */
@@ -210,6 +233,60 @@ a {
 
 .toolbar .spacer {
   flex: 1;
+}
+
+.toolbar .checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text-muted);
+  white-space: nowrap;
+  cursor: pointer;
+  margin-bottom: 0;
+}
+
+.toolbar .checkbox-label input[type="checkbox"] {
+  width: auto;
+}
+
+.chip-toggle {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.chip-toggle.active {
+  background: rgba(217, 154, 61, 0.16);
+  color: var(--amber);
+  border-color: rgba(217, 154, 61, 0.4);
+}
+
+.field-hint {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+.estado-actual {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.estado-actual strong {
+  color: var(--text);
 }
 
 input[type="text"],
@@ -670,13 +747,10 @@ tbody tr.inactive {
     font-size: 12px;
     padding: 5px 10px;
   }
-  .logout-link {
-    top: 48px;
-  }
-  .session-email {
+  .session-info {
     top: 14px;
     right: 14px;
     font-size: 11px;
-    max-width: 160px;
+    max-width: 180px;
   }
 }

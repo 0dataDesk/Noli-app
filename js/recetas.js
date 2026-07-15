@@ -267,16 +267,18 @@ function pintarDetalle(receta, resumen, lineas, pasos, insumosActivos) {
             <div class="field">
               <label for="d-porcentaje">% Costo objetivo</label>
               <input type="number" id="d-porcentaje" step="0.1" min="0.1" value="${receta.porcentaje_costo_objetivo}" form="form-receta" />
+              <small class="field-hint">Qué porcentaje del precio final debe representar el costo de los ingredientes. Define el factor multiplicador y el precio sugerido.</small>
             </div>
-            <div class="costeo-row"><span>Factor multiplicador</span><strong>${resumen.factor_multiplicador ?? '—'}×</strong></div>
-            <div class="costeo-row"><span>Precio sugerido</span><strong>${resumen.precio_sugerido != null ? moneyFmt.format(resumen.precio_sugerido) : '—'}</strong></div>
+            <div class="costeo-row"><span>Factor multiplicador</span><strong id="factor-multiplicador">${resumen.factor_multiplicador ?? '—'}×</strong></div>
+            <div class="costeo-row"><span>Precio sugerido</span><strong id="precio-sugerido">${resumen.precio_sugerido != null ? moneyFmt.format(resumen.precio_sugerido) : '—'}</strong></div>
             <div class="field">
               <label for="d-precio-manual">Precio de venta manual (override)</label>
               <input type="number" id="d-precio-manual" step="0.01" min="0" placeholder="Usar precio sugerido" value="${receta.precio_venta_manual ?? ''}" form="form-receta" />
+              <small class="field-hint">Opcional. Si lo defines, este precio se usa como precio final en vez del sugerido. Déjalo vacío para usar siempre el precio sugerido.</small>
             </div>
             <div class="precio-final">
               <span class="label">Precio final</span>
-              <span class="value">${resumen.precio_final != null ? moneyFmt.format(resumen.precio_final) : '—'}</span>
+              <span class="value" id="precio-final-value">${resumen.precio_final != null ? moneyFmt.format(resumen.precio_final) : '—'}</span>
             </div>
           </div>
         </div>
@@ -284,10 +286,38 @@ function pintarDetalle(receta, resumen, lineas, pasos, insumosActivos) {
     </div>
   `;
 
-  attachDetalleHandlers(receta.id);
+  attachDetalleHandlers(receta.id, resumen.costo_total);
 }
 
-function attachDetalleHandlers(recetaId) {
+function attachDetalleHandlers(recetaId, costoTotal) {
+  function recalcularCosteo() {
+    const porcentaje = parseFloat(document.getElementById('d-porcentaje').value);
+    const precioManualRaw = document.getElementById('d-precio-manual').value;
+    const precioManual = precioManualRaw === '' ? null : parseFloat(precioManualRaw);
+
+    const factorEl = document.getElementById('factor-multiplicador');
+    const sugeridoEl = document.getElementById('precio-sugerido');
+    const finalEl = document.getElementById('precio-final-value');
+
+    if (costoTotal == null || isNaN(porcentaje) || porcentaje <= 0) {
+      factorEl.textContent = '—×';
+      sugeridoEl.textContent = '—';
+      finalEl.textContent = '—';
+      return;
+    }
+
+    const factor = 100 / porcentaje;
+    const precioSugerido = Math.round(costoTotal * factor * 100) / 100;
+    const precioFinal = (precioManual != null && !isNaN(precioManual)) ? precioManual : precioSugerido;
+
+    factorEl.textContent = `${Math.round(factor * 100) / 100}×`;
+    sugeridoEl.textContent = moneyFmt.format(precioSugerido);
+    finalEl.textContent = moneyFmt.format(precioFinal);
+  }
+
+  document.getElementById('d-porcentaje').addEventListener('input', recalcularCosteo);
+  document.getElementById('d-precio-manual').addEventListener('input', recalcularCosteo);
+
   const form = document.getElementById('form-receta');
 
   form.addEventListener('submit', async (e) => {

@@ -11,8 +11,11 @@
 </head>
 <body>
   <a class="back-link" href="index.html">← Inicio</a>
-  <button type="button" class="back-link logout-link" id="btn-logout">Cerrar sesión</button>
-  <span class="session-email" id="session-email"></span>
+  <div class="session-info">
+    <span class="session-name" id="session-name"></span>
+    <span class="sep">·</span>
+    <button type="button" class="session-logout" id="btn-logout">Salir</button>
+  </div>
 
   <div class="page">
     <div class="topbar">
@@ -25,6 +28,11 @@
     <div class="card">
       <div class="toolbar">
         <input type="search" id="buscador" placeholder="Buscar insumo por nombre…" />
+        <button type="button" class="chip-toggle" id="btn-solo-pendientes">Solo pendientes</button>
+        <label class="checkbox-label">
+          <input type="checkbox" id="chk-mostrar-inactivos" />
+          Mostrar inactivos
+        </label>
         <div class="spacer"></div>
         <button class="btn-primary" id="btn-nuevo">+ Nuevo insumo</button>
       </div>
@@ -65,6 +73,7 @@
           <input type="text" id="f-proveedor" />
         </div>
         <div id="notas-revision-box" hidden style="font-size:13px;color:var(--amber);margin-bottom:12px;"></div>
+        <div id="estado-actual-box" class="estado-actual" hidden></div>
         <div class="modal-actions">
           <button type="button" class="btn-ghost" id="btn-eliminar" hidden>Desactivar</button>
           <button type="button" class="btn-ghost" id="btn-cancelar">Cancelar</button>

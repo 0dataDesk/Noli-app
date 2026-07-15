@@ -9,9 +9,20 @@ async function requireSession() {
   return session;
 }
 
-function wireSessionUI(session) {
-  const emailEl = document.getElementById('session-email');
-  if (emailEl) emailEl.textContent = session.user.email;
+async function wireSessionUI(session) {
+  const nameEl = document.getElementById('session-name');
+  if (nameEl) {
+    let nombre = session.user.email;
+    const { data, error } = await supabaseClient
+      .from('perfiles')
+      .select('nombre_corto')
+      .eq('id', session.user.id)
+      .single();
+    if (!error && data && data.nombre_corto) {
+      nombre = data.nombre_corto;
+    }
+    nameEl.textContent = nombre;
+  }
 
   const logoutBtn = document.getElementById('btn-logout');
   if (logoutBtn) {

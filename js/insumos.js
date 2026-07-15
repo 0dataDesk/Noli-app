@@ -2,9 +2,12 @@ const moneyFmt = new Intl.NumberFormat('es-MX', { style: 'currency', currency: '
 
 let insumos = [];
 let insumoEnEdicion = null;
+let soloPendientes = false;
 
 const contenido = document.getElementById('contenido');
 const buscador = document.getElementById('buscador');
+const btnSoloPendientes = document.getElementById('btn-solo-pendientes');
+const chkMostrarInactivos = document.getElementById('chk-mostrar-inactivos');
 const modalOverlay = document.getElementById('modal-overlay');
 const modalTitle = document.getElementById('modal-title');
 const form = document.getElementById('form-insumo');
@@ -14,14 +17,16 @@ const fUnidad = document.getElementById('f-unidad');
 const fCosto = document.getElementById('f-costo');
 const fProveedor = document.getElementById('f-proveedor');
 const notasBox = document.getElementById('notas-revision-box');
+const estadoActualBox = document.getElementById('estado-actual-box');
 const btnEliminar = document.getElementById('btn-eliminar');
 
 async function cargarInsumos() {
-  const { data, error } = await supabaseClient
-    .from('insumos')
-    .select('*')
-    .eq('activo', true)
-    .order('nombre', { ascending: true });
+  let query = supabaseClient.from('insumos').select('*').order('nombre', { ascending: true });
+  if (!chkMostrarInactivos.checked) {
+    query = query.eq('activo', true);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     contenido.innerHTML = `<div class="empty-state">Error al cargar insumos: ${error.message}</div>`;
@@ -29,18 +34,30 @@ async function cargarInsumos() {
   }
 
   insumos = data;
-  renderAcordeon(insumos);
+  renderAcordeon(aplicarFiltros(insumos));
+}
+
+function aplicarFiltros(lista) {
+  const q = buscador.value.trim().toLowerCase();
+  return lista.filter((i) => {
+    if (q && !i.nombre.toLowerCase().includes(q)) return false;
+    if (soloPendientes && i.costo_unitario !== null) return false;
+    return true;
+  });
 }
 
 function filaHtml(i) {
   const pendiente = i.costo_unitario === null;
   return `
-    <tr data-id="${i.id}">
+    <tr data-id="${i.id}" class="${i.activo ? '' : 'inactive'}">
       <td>${i.nombre}</td>
       <td>${i.unidad_medida}</td>
       <td>${pendiente ? '<span class="badge badge-pendiente">Costo pendiente</span>' : moneyFmt.format(i.costo_unitario)}</td>
       <td>${i.proveedor || '—'}</td>
-      <td>${pendiente ? '<span class="badge badge-pendiente">Pendiente</span>' : '<span class="badge" style="color:var(--olive);border:1px solid var(--olive);background:rgba(107,125,62,0.15);">OK</span>'}</td>
+      <td>
+        ${pendiente ? '<span class="badge badge-pendiente">Pendiente</span>' : '<span class="badge" style="color:var(--olive);border:1px solid var(--olive);background:rgba(107,125,62,0.15);">OK</span>'}
+        ${i.activo ? '' : '<span class="badge badge-inactivo">Inactivo</span>'}
+      </td>
     </tr>
   `;
 }
@@ -58,13 +75,14 @@ function renderAcordeon(lista) {
   });
 
   const categorias = Object.keys(grupos).sort();
+  const filtroActivo = buscador.value.trim() !== '' || soloPendientes;
 
   contenido.innerHTML = categorias.map((cat) => {
     const items = grupos[cat];
     const filas = items.map(filaHtml).join('');
 
     return `
-      <div class="categoria-group">
+      <div class="categoria-group${filtroActivo ? '' : ' collapsed'}">
         <div class="categoria-header">
           <h2>${cat}</h2>
           <span class="count">${items.length} insumo${items.length === 1 ? '' : 's'}</span>
@@ -100,14 +118,23 @@ function renderAcordeon(lista) {
 }
 
 buscador.addEventListener('input', () => {
-  const q = buscador.value.trim().toLowerCase();
-  const filtrados = q ? insumos.filter((i) => i.nombre.toLowerCase().includes(q)) : insumos;
-  renderAcordeon(filtrados);
+  renderAcordeon(aplicarFiltros(insumos));
+});
+
+btnSoloPendientes.addEventListener('click', () => {
+  soloPendientes = !soloPendientes;
+  btnSoloPendientes.classList.toggle('active', soloPendientes);
+  renderAcordeon(aplicarFiltros(insumos));
+});
+
+chkMostrarInactivos.addEventListener('change', () => {
+  cargarInsumos();
 });
 
 function abrirModal(modo, insumo) {
   form.reset();
   notasBox.hidden = true;
+  estadoActualBox.hidden = true;
   insumoEnEdicion = modo === 'editar' ? insumo : null;
   btnEliminar.hidden = modo === 'nuevo';
 
@@ -123,6 +150,9 @@ function abrirModal(modo, insumo) {
     fCosto.value = insumo.costo_unitario ?? '';
     fProveedor.value = insumo.proveedor || '';
     btnEliminar.textContent = insumo.activo ? 'Desactivar' : 'Reactivar';
+
+    estadoActualBox.hidden = false;
+    estadoActualBox.innerHTML = `Estado actual: <strong>${insumo.activo ? 'Activo' : 'Inactivo'}</strong>`;
 
     if (insumo.notas_revision) {
       notasBox.hidden = false;

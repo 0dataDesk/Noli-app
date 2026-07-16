@@ -27,14 +27,14 @@ function render() {
   if (ruta.vista === 'detalle') {
     vistaLista.hidden = true;
     vistaDetalle.hidden = false;
-    pageTitle.textContent = 'Receta';
+    pageTitle.textContent = '🍝 Receta';
     topLink.textContent = '← Recetas';
     topLink.href = '#';
     renderDetalle(ruta.id);
   } else {
     vistaLista.hidden = false;
     vistaDetalle.hidden = true;
-    pageTitle.textContent = 'Recetas';
+    pageTitle.textContent = '🍝 Recetas';
     topLink.textContent = '← Inicio';
     topLink.href = 'index.html';
     renderLista();

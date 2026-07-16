@@ -5,6 +5,7 @@ const MAX_ARCHIVOS_PROVEEDOR = 3;
 
 const vistaLista = document.getElementById('vista-lista');
 const vistaDetalle = document.getElementById('vista-detalle');
+const vistaPedido = document.getElementById('vista-pedido');
 const contenidoLista = document.getElementById('contenido-lista');
 const buscador = document.getElementById('buscador');
 const pageTitle = document.getElementById('page-title');
@@ -25,13 +26,18 @@ let proveedorActualId = null;
 let precioEnEdicion = null;
 let insumosParaSelector = [];
 let insumosByIdSelector = {};
+let pedidoBuilderState = null;
 
 // ---------- Routing ----------
 
 function rutaActual() {
   const hash = location.hash.replace(/^#\/?/, '');
-  if (hash.startsWith('proveedor/')) {
-    return { vista: 'detalle', id: hash.slice('proveedor/'.length) };
+  const partes = hash.split('/');
+  if (partes[0] === 'proveedor' && partes[1]) {
+    if (partes[2] === 'pedido' && partes[3]) {
+      return { vista: 'pedido', proveedorId: partes[1], pedidoId: partes[3] };
+    }
+    return { vista: 'detalle', id: partes[1] };
   }
   return { vista: 'lista' };
 }
@@ -40,9 +46,18 @@ window.addEventListener('hashchange', render);
 
 function render() {
   const ruta = rutaActual();
-  if (ruta.vista === 'detalle') {
+  if (ruta.vista === 'pedido') {
+    vistaLista.hidden = true;
+    vistaDetalle.hidden = true;
+    vistaPedido.hidden = false;
+    pageTitle.textContent = 'Pedido';
+    topLink.textContent = '← Proveedor';
+    topLink.href = `#proveedor/${ruta.proveedorId}`;
+    renderPedido(ruta.proveedorId, ruta.pedidoId);
+  } else if (ruta.vista === 'detalle') {
     vistaLista.hidden = true;
     vistaDetalle.hidden = false;
+    vistaPedido.hidden = true;
     pageTitle.textContent = 'Proveedor';
     topLink.textContent = '← Proveedores';
     topLink.href = '#';
@@ -50,6 +65,7 @@ function render() {
   } else {
     vistaLista.hidden = false;
     vistaDetalle.hidden = true;
+    vistaPedido.hidden = true;
     pageTitle.textContent = 'Proveedores';
     topLink.textContent = '← Inicio';
     topLink.href = 'index.html';
@@ -158,18 +174,19 @@ formProveedor.addEventListener('submit', async (e) => {
 async function renderDetalle(id) {
   vistaDetalle.innerHTML = '<div class="loading">Cargando proveedor…</div>';
 
-  const [{ data: proveedor, error: errP }, { data: precios, error: errPr }, { data: archivos, error: errA }, { data: insumosActivos, error: errI }] = await Promise.all([
+  const [{ data: proveedor, error: errP }, { data: precios, error: errPr }, { data: archivos, error: errA }, { data: insumosActivos, error: errI }, { data: pedidos, error: errPe }] = await Promise.all([
     supabaseClient.from('proveedores').select('*').eq('id', id).single(),
     supabaseClient.from('precios_proveedores').select('*').eq('proveedor_id', id).order('insumo_id', { ascending: true }),
     supabaseClient.from('proveedor_archivos').select('*').eq('proveedor_id', id).order('created_at', { ascending: true }),
     supabaseClient.from('insumos').select('id, nombre, unidad_medida').eq('activo', true).order('nombre', { ascending: true }),
+    supabaseClient.from('v_pedido_resumen').select('*').eq('proveedor_id', id).order('fecha_pedido', { ascending: false }),
   ]);
 
   if (errP || !proveedor) {
     vistaDetalle.innerHTML = '<div class="empty-state">No se encontró el proveedor.</div>';
     return;
   }
-  if (errPr || errA || errI) {
+  if (errPr || errA || errI || errPe) {
     vistaDetalle.innerHTML = '<div class="empty-state">Error al cargar datos del proveedor.</div>';
     return;
   }
@@ -178,7 +195,7 @@ async function renderDetalle(id) {
   insumosByIdSelector = {};
   insumosActivos.forEach((i) => { insumosByIdSelector[i.id] = i; });
 
-  pintarDetalle(proveedor, precios, archivos);
+  pintarDetalle(proveedor, precios, archivos, pedidos || []);
 }
 
 function metaItem(label, value) {
@@ -187,6 +204,21 @@ function metaItem(label, value) {
       <span class="meta-label">${label}</span>
       <span class="meta-value">${value}</span>
     </div>
+  `;
+}
+
+function badgeClasePedido(estado) {
+  return { Borrador: 'badge-inactivo', Enviado: 'badge-pendiente', Recibido: 'badge-vigente', Cancelado: 'badge-vencido' }[estado] || 'badge-inactivo';
+}
+
+function filaPedidoHtml(p) {
+  return `
+    <tr>
+      <td>${p.fecha_pedido}</td>
+      <td><span class="badge ${badgeClasePedido(p.estado)}">${p.estado}</span></td>
+      <td>$${numFmt(p.total_pedido || 0)}</td>
+      <td><a class="btn-ghost btn-sm" href="#proveedor/${p.proveedor_id}/pedido/${p.id}">Ver/Editar</a></td>
+    </tr>
   `;
 }
 
@@ -227,12 +259,15 @@ function filaArchivoHtml(a) {
   `;
 }
 
-function pintarDetalle(proveedor, precios, archivos) {
+function pintarDetalle(proveedor, precios, archivos, pedidos) {
   const filasPrecios = precios.map(filaPrecioHtml).join('')
     || '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);">Sin precios capturados.</td></tr>';
 
   const filasArchivos = archivos.map(filaArchivoHtml).join('')
     || '<p style="color:var(--text-muted);font-size:14px;">Sin archivos subidos.</p>';
+
+  const filasPedidos = pedidos.map(filaPedidoHtml).join('')
+    || '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);">Sin pedidos capturados.</td></tr>';
 
   const archivosLlenos = archivos.length >= MAX_ARCHIVOS_PROVEEDOR;
 
@@ -274,6 +309,18 @@ function pintarDetalle(proveedor, precios, archivos) {
       ${archivosLlenos ? '<p style="font-size:13px;color:var(--amber);margin-top:0;">Máximo 3 archivos — elimina uno para subir otro.</p>' : ''}
       <div id="lista-archivos">${filasArchivos}</div>
     </div>
+
+    <div class="card" style="margin-top:20px;overflow-x:auto;">
+      <div class="toolbar" style="margin-bottom:12px;">
+        <div class="section-title" style="margin:0;">Pedidos</div>
+        <div class="spacer"></div>
+        <button type="button" class="btn-primary btn-sm" id="btn-nuevo-pedido">+ Nuevo pedido</button>
+      </div>
+      <table>
+        <thead><tr><th>Fecha</th><th>Estado</th><th>Total</th><th></th></tr></thead>
+        <tbody>${filasPedidos}</tbody>
+      </table>
+    </div>
   `;
 
   attachDetalleHandlers(proveedor.id, precios, archivos.length);
@@ -290,6 +337,10 @@ function attachDetalleHandlers(proveedorId, precios, archivosCount) {
   });
 
   document.getElementById('btn-subir-archivo').addEventListener('click', () => abrirModalArchivo(proveedorId, archivosCount));
+
+  document.getElementById('btn-nuevo-pedido').addEventListener('click', () => {
+    location.hash = `#proveedor/${proveedorId}/pedido/nuevo`;
+  });
 
   document.querySelectorAll('.archivo-ver').forEach((btn) => {
     btn.addEventListener('click', async () => {
@@ -501,6 +552,366 @@ formArchivo.addEventListener('submit', async (e) => {
   modalArchivoOverlay.hidden = true;
   renderDetalle(proveedorActualId);
 });
+
+// ---------- Vista pedido (builder / pedido guardado) ----------
+
+async function renderPedido(proveedorId, pedidoId) {
+  vistaPedido.innerHTML = '<div class="loading">Cargando…</div>';
+
+  const { data: proveedor, error: errP } = await supabaseClient.from('proveedores').select('*').eq('id', proveedorId).single();
+  if (errP || !proveedor) {
+    vistaPedido.innerHTML = '<div class="empty-state">No se encontró el proveedor.</div>';
+    return;
+  }
+
+  if (pedidoId === 'nuevo') {
+    await renderBuilderPedido(proveedor);
+  } else {
+    await renderPedidoGuardado(proveedor, pedidoId);
+  }
+}
+
+// ---------- Builder de pedido nuevo ----------
+
+async function renderBuilderPedido(proveedor) {
+  const hoy = new Date().toISOString().slice(0, 10);
+
+  const { data: precios, error: errPr } = await supabaseClient
+    .from('precios_proveedores')
+    .select('*')
+    .eq('proveedor_id', proveedor.id)
+    .eq('activo', true)
+    .or(`fecha_fin.is.null,fecha_fin.gte.${hoy}`);
+
+  if (errPr) {
+    vistaPedido.innerHTML = `<div class="empty-state">Error al cargar precios: ${errPr.message}</div>`;
+    return;
+  }
+
+  const insumoIds = [...new Set((precios || []).map((p) => p.insumo_id))];
+  let insumosDisponibles = [];
+  if (insumoIds.length) {
+    const { data } = await supabaseClient.from('insumos').select('id, nombre, unidad_medida').in('id', insumoIds).order('nombre', { ascending: true });
+    insumosDisponibles = data || [];
+  }
+
+  const preciosPorInsumo = {};
+  (precios || []).forEach((pr) => {
+    if (!preciosPorInsumo[pr.insumo_id]) preciosPorInsumo[pr.insumo_id] = [];
+    preciosPorInsumo[pr.insumo_id].push(pr);
+  });
+
+  pedidoBuilderState = { proveedor, insumosDisponibles, preciosPorInsumo, lineas: [] };
+  pintarBuilderPedido();
+}
+
+function pintarBuilderPedido() {
+  const { proveedor, insumosDisponibles, lineas } = pedidoBuilderState;
+
+  const opcionesInsumo = insumosDisponibles.map((i) => `<option value="${i.id}">${i.nombre}</option>`).join('');
+
+  const filasLineas = lineas.map((l, idx) => `
+    <tr>
+      <td>${l.insumoNombre}</td>
+      <td>${l.presentacion}</td>
+      <td>${l.cantidad}</td>
+      <td>$${numFmt(l.subtotal)}</td>
+      <td><button type="button" class="btn-ghost btn-sm builder-quitar-linea" data-idx="${idx}">Quitar</button></td>
+    </tr>
+  `).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">Sin líneas agregadas.</td></tr>';
+
+  const total = lineas.reduce((s, l) => s + l.subtotal, 0);
+
+  vistaPedido.innerHTML = `
+    <div class="card" style="margin-bottom:20px;">
+      <h2>Nuevo pedido — ${proveedor.nombre_corto}</h2>
+    </div>
+
+    <div class="card" style="margin-bottom:20px;">
+      <div class="section-title" style="margin-top:0;">Agregar insumo</div>
+      ${insumosDisponibles.length === 0 ? '<p style="color:var(--text-muted);font-size:14px;">Este proveedor no tiene precios vigentes capturados.</p>' : `
+      <div class="field-row">
+        <div class="field">
+          <label for="bp-insumo">Insumo</label>
+          <select id="bp-insumo">
+            <option value="">Selecciona…</option>
+            ${opcionesInsumo}
+          </select>
+        </div>
+        <div class="field" id="bp-presentacion-box" hidden>
+          <label for="bp-presentacion">Presentación</label>
+          <select id="bp-presentacion"></select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="bp-cantidad">Cantidad de presentaciones</label>
+          <input type="number" id="bp-cantidad" min="1" step="1" value="1" />
+        </div>
+        <div class="field" style="display:flex;align-items:flex-end;">
+          <button type="button" class="btn-primary" id="btn-agregar-linea" style="width:100%;">+ Agregar</button>
+        </div>
+      </div>
+      `}
+    </div>
+
+    <div class="card" style="margin-bottom:20px;overflow-x:auto;">
+      <div class="section-title" style="margin-top:0;">Líneas del pedido</div>
+      <table>
+        <thead><tr><th>Insumo</th><th>Presentación</th><th>Cantidad</th><th>Subtotal</th><th></th></tr></thead>
+        <tbody>${filasLineas}</tbody>
+      </table>
+      <div class="precio-final" style="margin-top:16px;">
+        <span class="label">Total</span>
+        <span class="value">$${numFmt(total)}</span>
+      </div>
+    </div>
+
+    <div class="modal-actions" style="justify-content:flex-start;border-top:none;padding-top:0;">
+      <button type="button" class="btn-primary" id="btn-guardar-pedido" ${lineas.length === 0 ? 'disabled' : ''}>Guardar pedido</button>
+      <button type="button" class="btn-ghost" id="btn-cancelar-pedido">Cancelar</button>
+    </div>
+  `;
+
+  attachBuilderHandlers();
+}
+
+function attachBuilderHandlers() {
+  const selInsumo = document.getElementById('bp-insumo');
+
+  if (selInsumo) {
+    selInsumo.addEventListener('change', () => {
+      const precios = pedidoBuilderState.preciosPorInsumo[selInsumo.value] || [];
+      const box = document.getElementById('bp-presentacion-box');
+      const selPres = document.getElementById('bp-presentacion');
+      if (precios.length > 1) {
+        box.hidden = false;
+        selPres.innerHTML = precios.map((p) => `<option value="${p.id}">${p.presentacion} — $${numFmt(p.costo_presentacion)}</option>`).join('');
+      } else {
+        box.hidden = true;
+        selPres.innerHTML = precios.length ? `<option value="${precios[0].id}">${precios[0].presentacion}</option>` : '';
+      }
+    });
+  }
+
+  const btnAgregar = document.getElementById('btn-agregar-linea');
+  if (btnAgregar) {
+    btnAgregar.addEventListener('click', () => {
+      const insumoId = selInsumo.value;
+      if (!insumoId) { alert('Selecciona un insumo.'); return; }
+
+      const precios = pedidoBuilderState.preciosPorInsumo[insumoId] || [];
+      const selPres = document.getElementById('bp-presentacion');
+      const precioId = precios.length > 1 ? selPres.value : (precios[0] && precios[0].id);
+      const precio = precios.find((p) => String(p.id) === String(precioId));
+      if (!precio) { alert('No se encontró el precio seleccionado.'); return; }
+
+      const cantidad = parseFloat(document.getElementById('bp-cantidad').value);
+      if (!cantidad || cantidad <= 0) { alert('Ingresa una cantidad válida.'); return; }
+
+      const insumo = pedidoBuilderState.insumosDisponibles.find((i) => i.id === insumoId);
+
+      pedidoBuilderState.lineas.push({
+        insumoId,
+        insumoNombre: insumo ? insumo.nombre : insumoId,
+        precioId: precio.id,
+        presentacion: precio.presentacion,
+        costoPresentacion: precio.costo_presentacion,
+        cantidad,
+        subtotal: cantidad * precio.costo_presentacion,
+      });
+
+      pintarBuilderPedido();
+    });
+  }
+
+  document.querySelectorAll('.builder-quitar-linea').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.idx, 10);
+      pedidoBuilderState.lineas.splice(idx, 1);
+      pintarBuilderPedido();
+    });
+  });
+
+  const btnGuardar = document.getElementById('btn-guardar-pedido');
+  if (btnGuardar) btnGuardar.addEventListener('click', guardarPedido);
+
+  document.getElementById('btn-cancelar-pedido').addEventListener('click', () => {
+    location.hash = `#proveedor/${pedidoBuilderState.proveedor.id}`;
+  });
+}
+
+async function siguienteIdPedido() {
+  const { data, error } = await supabaseClient
+    .from('pedidos_proveedor')
+    .select('id')
+    .order('id', { ascending: false })
+    .limit(1);
+
+  if (error || !data || data.length === 0) return 'PED-001';
+
+  const maxNum = parseInt(data[0].id.split('-')[1], 10);
+  const siguiente = (maxNum + 1).toString().padStart(3, '0');
+  return `PED-${siguiente}`;
+}
+
+async function guardarPedido() {
+  const { proveedor, lineas } = pedidoBuilderState;
+  if (!lineas.length) return;
+
+  const btnGuardar = document.getElementById('btn-guardar-pedido');
+  btnGuardar.disabled = true;
+  btnGuardar.textContent = 'Guardando…';
+
+  const pedidoId = await siguienteIdPedido();
+
+  const { error: errPedido } = await supabaseClient.from('pedidos_proveedor').insert({
+    id: pedidoId,
+    proveedor_id: proveedor.id,
+    fecha_pedido: new Date().toISOString().slice(0, 10),
+    estado: 'Borrador',
+  });
+
+  if (errPedido) {
+    alert(`Error al crear el pedido: ${errPedido.message}`);
+    btnGuardar.disabled = false;
+    btnGuardar.textContent = 'Guardar pedido';
+    return;
+  }
+
+  // Snapshot: se copian presentación y costo (ya capturados al construir el pedido),
+  // nunca una referencia viva a precios_proveedores.
+  const itemsPayload = lineas.map((l) => ({
+    pedido_id: pedidoId,
+    insumo_id: l.insumoId,
+    precio_id: l.precioId,
+    presentacion_snapshot: l.presentacion,
+    costo_presentacion_snapshot: l.costoPresentacion,
+    cantidad_presentaciones: l.cantidad,
+    activo: true,
+  }));
+
+  const { error: errItems } = await supabaseClient.from('pedido_items').insert(itemsPayload);
+
+  if (errItems) {
+    alert(`Error al guardar las líneas del pedido: ${errItems.message}`);
+    btnGuardar.disabled = false;
+    btnGuardar.textContent = 'Guardar pedido';
+    return;
+  }
+
+  location.hash = `#proveedor/${proveedor.id}/pedido/${pedidoId}`;
+}
+
+// ---------- Vista de pedido guardado ----------
+
+async function renderPedidoGuardado(proveedor, pedidoId) {
+  vistaPedido.innerHTML = '<div class="loading">Cargando pedido…</div>';
+
+  const [{ data: resumen, error: errR }, { data: items, error: errI }] = await Promise.all([
+    supabaseClient.from('v_pedido_resumen').select('*').eq('id', pedidoId).single(),
+    supabaseClient.from('v_pedido_items_costeo').select('*').eq('pedido_id', pedidoId).order('insumo_nombre', { ascending: true }),
+  ]);
+
+  if (errR || !resumen) {
+    vistaPedido.innerHTML = '<div class="empty-state">No se encontró el pedido.</div>';
+    return;
+  }
+  if (errI) {
+    vistaPedido.innerHTML = `<div class="empty-state">Error al cargar las líneas del pedido: ${errI.message}</div>`;
+    return;
+  }
+
+  pintarPedidoGuardado(proveedor, resumen, items || []);
+}
+
+function construirTextoWhatsapp(proveedor, resumen, items) {
+  const lineas = items.map((it) => `- ${it.presentacion_snapshot} x${it.cantidad_presentaciones} — ${it.insumo_nombre}`);
+  return [`Pedido para ${proveedor.nombre_corto}`, ...lineas, `Total: $${numFmt(resumen.total_pedido || 0)}`].join('\n');
+}
+
+function pintarPedidoGuardado(proveedor, resumen, items) {
+  const filasItems = items.map((it) => `
+    <tr>
+      <td>${it.insumo_nombre}</td>
+      <td>${it.presentacion_snapshot}</td>
+      <td>${it.cantidad_presentaciones}</td>
+      <td>$${numFmt(it.costo_presentacion_snapshot)}</td>
+      <td>$${numFmt(it.costo_linea)}</td>
+      <td><button type="button" class="btn-ghost btn-sm pedido-item-quitar" data-id="${it.id}">Quitar</button></td>
+    </tr>
+  `).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">Sin líneas.</td></tr>';
+
+  const telefonoLimpio = (resumen.proveedor_telefono || '').replace(/[\s\-()]/g, '');
+  const linkWhatsapp = telefonoLimpio ? `https://wa.me/52${telefonoLimpio}` : null;
+
+  vistaPedido.innerHTML = `
+    <div class="card" style="margin-bottom:20px;">
+      <h2>${resumen.id} — ${proveedor.nombre_corto}</h2>
+      <div class="meta-list">
+        ${metaItem('Fecha', resumen.fecha_pedido)}
+        ${metaItem('Estado', `<span class="badge ${badgeClasePedido(resumen.estado)}">${resumen.estado}</span>`)}
+      </div>
+      <div class="field" style="margin-top:16px;max-width:240px;">
+        <label for="bp-estado">Cambiar estado</label>
+        <select id="bp-estado">
+          <option value="Borrador" ${resumen.estado === 'Borrador' ? 'selected' : ''}>Borrador</option>
+          <option value="Enviado" ${resumen.estado === 'Enviado' ? 'selected' : ''}>Enviado</option>
+          <option value="Recibido" ${resumen.estado === 'Recibido' ? 'selected' : ''}>Recibido</option>
+          <option value="Cancelado" ${resumen.estado === 'Cancelado' ? 'selected' : ''}>Cancelado</option>
+        </select>
+      </div>
+      <div class="modal-actions" style="justify-content:flex-start;border-top:none;padding-top:16px;">
+        <button type="button" class="btn-primary btn-sm" id="btn-copiar-whatsapp">Copiar para WhatsApp</button>
+        ${linkWhatsapp ? `<a class="btn-ghost btn-sm" href="${linkWhatsapp}" target="_blank" rel="noopener">Abrir WhatsApp</a>` : ''}
+      </div>
+    </div>
+
+    <div class="card" style="overflow-x:auto;">
+      <div class="section-title" style="margin-top:0;">Líneas del pedido</div>
+      <table>
+        <thead><tr><th>Insumo</th><th>Presentación</th><th>Cantidad</th><th>Costo unit.</th><th>Subtotal</th><th></th></tr></thead>
+        <tbody>${filasItems}</tbody>
+      </table>
+      <div class="precio-final" style="margin-top:16px;">
+        <span class="label">Total</span>
+        <span class="value">$${numFmt(resumen.total_pedido || 0)}</span>
+      </div>
+    </div>
+  `;
+
+  attachPedidoGuardadoHandlers(proveedor, resumen, items);
+}
+
+function attachPedidoGuardadoHandlers(proveedor, resumen, items) {
+  document.getElementById('bp-estado').addEventListener('change', async (e) => {
+    const nuevoEstado = e.target.value;
+    const { error } = await supabaseClient
+      .from('pedidos_proveedor')
+      .update({ estado: nuevoEstado, updated_at: new Date().toISOString() })
+      .eq('id', resumen.id);
+    if (error) { alert(`Error al actualizar estado: ${error.message}`); return; }
+    renderPedidoGuardado(proveedor, resumen.id);
+  });
+
+  document.getElementById('btn-copiar-whatsapp').addEventListener('click', () => {
+    const texto = construirTextoWhatsapp(proveedor, resumen, items);
+    navigator.clipboard.writeText(texto).then(() => {
+      alert('Texto copiado — pégalo en WhatsApp.');
+    }).catch(() => {
+      alert('No se pudo copiar automáticamente. Copia el texto manualmente:\n\n' + texto);
+    });
+  });
+
+  document.querySelectorAll('.pedido-item-quitar').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('¿Quitar esta línea del pedido?')) return;
+      const { error } = await supabaseClient.from('pedido_items').update({ activo: false }).eq('id', btn.dataset.id);
+      if (error) { alert(`Error al quitar la línea: ${error.message}`); return; }
+      renderPedidoGuardado(proveedor, resumen.id);
+    });
+  });
+}
 
 (async () => {
   const session = await requireSession();

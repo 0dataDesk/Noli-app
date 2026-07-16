@@ -3,6 +3,7 @@ const moneyFmt = new Intl.NumberFormat('es-MX', { style: 'currency', currency: '
 let insumos = [];
 let insumoEnEdicion = null;
 let soloPendientes = false;
+let costoFinalPorInsumo = {};
 
 const contenido = document.getElementById('contenido');
 const buscador = document.getElementById('buscador');
@@ -15,7 +16,6 @@ const fId = document.getElementById('f-id');
 const fNombre = document.getElementById('f-nombre');
 const fUnidad = document.getElementById('f-unidad');
 const fCosto = document.getElementById('f-costo');
-const fProveedor = document.getElementById('f-proveedor');
 const costoEfectivoBox = document.getElementById('costo-efectivo-box');
 const costoEfectivoValue = document.getElementById('costo-efectivo-value');
 const proveedorPreferidoBox = document.getElementById('proveedor-preferido-box');
@@ -31,12 +31,18 @@ async function cargarInsumos() {
     query = query.eq('activo', true);
   }
 
-  const { data, error } = await query;
+  const [{ data, error }, { data: costosFinal }] = await Promise.all([
+    query,
+    supabaseClient.from('v_insumo_costo_final').select('insumo_id, proveedor_nombre_corto, fuente'),
+  ]);
 
   if (error) {
     contenido.innerHTML = `<div class="empty-state">Error al cargar insumos: ${error.message}</div>`;
     return;
   }
+
+  costoFinalPorInsumo = {};
+  (costosFinal || []).forEach((c) => { costoFinalPorInsumo[c.insumo_id] = c; });
 
   insumos = data;
   renderAcordeon(aplicarFiltros(insumos));
@@ -51,6 +57,14 @@ function aplicarFiltros(lista) {
   });
 }
 
+function celdaProveedor(i) {
+  const info = costoFinalPorInsumo[i.id];
+  if (info && info.fuente === 'proveedor' && info.proveedor_nombre_corto) {
+    return info.proveedor_nombre_corto;
+  }
+  return '<span class="badge badge-pendiente">Falta proveedor</span>';
+}
+
 function filaHtml(i) {
   const pendiente = i.costo_unitario === null;
   return `
@@ -58,7 +72,7 @@ function filaHtml(i) {
       <td>${i.nombre}</td>
       <td>${i.unidad_medida}</td>
       <td>${pendiente ? '<span class="badge badge-pendiente">Costo pendiente</span>' : moneyFmt.format(i.costo_unitario)}</td>
-      <td>${i.proveedor || '—'}</td>
+      <td>${celdaProveedor(i)}</td>
       <td>
         ${pendiente ? '<span class="badge badge-pendiente">Pendiente</span>' : '<span class="badge" style="color:var(--olive);border:1px solid var(--olive);background:rgba(107,125,62,0.15);">OK</span>'}
         ${i.activo ? '' : '<span class="badge badge-inactivo">Inactivo</span>'}
@@ -157,7 +171,6 @@ function abrirModal(modo, insumo) {
     fNombre.value = insumo.nombre;
     fUnidad.value = insumo.unidad_medida;
     fCosto.value = insumo.costo_unitario ?? '';
-    fProveedor.value = insumo.proveedor || '';
     btnEliminar.textContent = insumo.activo ? 'Desactivar' : 'Reactivar';
 
     estadoActualBox.hidden = false;
@@ -178,7 +191,7 @@ async function cargarInfoProveedorInsumo(insumo) {
   const hoy = new Date().toISOString().slice(0, 10);
 
   const [{ data: efectivo }, { data: preciosVigentes }] = await Promise.all([
-    supabaseClient.from('v_insumo_costo_efectivo').select('*').eq('insumo_id', insumo.id).maybeSingle(),
+    supabaseClient.from('v_insumo_costo_final').select('*').eq('insumo_id', insumo.id).maybeSingle(),
     supabaseClient
       .from('precios_proveedores')
       .select('proveedor_id')
@@ -187,10 +200,15 @@ async function cargarInfoProveedorInsumo(insumo) {
       .or(`fecha_fin.is.null,fecha_fin.gte.${hoy}`),
   ]);
 
-  costoEfectivoBox.hidden = !efectivo;
-  if (efectivo) {
-    const tipoTexto = efectivo.es_preferido_manual ? 'fijado manualmente' : 'automático';
-    costoEfectivoValue.textContent = `${moneyFmt.format(efectivo.costo_unitario_efectivo)}/${insumo.unidad_medida} (${efectivo.proveedor_nombre_corto}, ${tipoTexto})`;
+  costoEfectivoBox.hidden = false;
+  if (efectivo && efectivo.costo_final != null) {
+    const tipoTexto = efectivo.fuente === 'manual'
+      ? 'manual'
+      : (efectivo.es_preferido_manual ? 'fijado manualmente' : 'automático');
+    const prefijoProveedor = efectivo.proveedor_nombre_corto ? `${efectivo.proveedor_nombre_corto}, ` : '';
+    costoEfectivoValue.textContent = `${moneyFmt.format(efectivo.costo_final)}/${insumo.unidad_medida} (${prefijoProveedor}${tipoTexto})`;
+  } else {
+    costoEfectivoValue.textContent = 'Costo pendiente — sin precio de proveedor ni costo manual.';
   }
 
   const proveedorIdsConPrecio = [...new Set((preciosVigentes || []).map((p) => p.proveedor_id))];
@@ -252,7 +270,6 @@ form.addEventListener('submit', async (e) => {
     nombre: fNombre.value.trim(),
     unidad_medida: fUnidad.value,
     costo_unitario: costo,
-    proveedor: fProveedor.value.trim() || null,
   };
 
   if (fId.value) {

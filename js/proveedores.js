@@ -1,4 +1,5 @@
 const moneyFmt = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
+const numFmt = (n) => Number(n).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const EXTENSIONES_ARCHIVO_PERMITIDAS = ['pdf', 'xlsx', 'xls'];
 const MAX_ARCHIVOS_PROVEEDOR = 3;
 
@@ -21,6 +22,7 @@ const formArchivo = document.getElementById('form-archivo');
 
 let proveedoresCache = [];
 let proveedorActualId = null;
+let precioEnEdicion = null;
 let insumosParaSelector = [];
 let insumosByIdSelector = {};
 
@@ -201,15 +203,12 @@ function filaPrecioHtml(pr) {
     <tr class="${pr.activo ? '' : 'inactive'}">
       <td>${insumo.nombre}</td>
       <td>${pr.presentacion}</td>
-      <td>${pr.cantidad_base} ${insumo.unidad_medida}</td>
-      <td>${moneyFmt.format(pr.costo_presentacion)}</td>
-      <td>${costoUnitario != null ? `${moneyFmt.format(costoUnitario)}/${insumo.unidad_medida}` : '—'}</td>
-      <td>${pr.fecha_inicio}</td>
-      <td>${pr.fecha_fin || '—'}</td>
+      <td>${numFmt(pr.cantidad_base)} ${insumo.unidad_medida}</td>
+      <td>$${numFmt(pr.costo_presentacion)}</td>
+      <td>${costoUnitario != null ? `$${numFmt(costoUnitario)}/${insumo.unidad_medida}` : '—'}</td>
       <td>${estadoBadge}</td>
       <td style="white-space:nowrap;">
         <button type="button" class="btn-ghost btn-sm precio-editar" data-id="${pr.id}">Editar</button>
-        ${pr.activo ? `<button type="button" class="btn-ghost btn-sm precio-inactivar" data-id="${pr.id}">Inactivar</button>` : ''}
       </td>
     </tr>
   `;
@@ -230,7 +229,7 @@ function filaArchivoHtml(a) {
 
 function pintarDetalle(proveedor, precios, archivos) {
   const filasPrecios = precios.map(filaPrecioHtml).join('')
-    || '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);">Sin precios capturados.</td></tr>';
+    || '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);">Sin precios capturados.</td></tr>';
 
   const filasArchivos = archivos.map(filaArchivoHtml).join('')
     || '<p style="color:var(--text-muted);font-size:14px;">Sin archivos subidos.</p>';
@@ -259,7 +258,7 @@ function pintarDetalle(proveedor, precios, archivos) {
         <thead>
           <tr>
             <th>Insumo</th><th>Presentación</th><th>Cant. base</th><th>Costo present.</th>
-            <th>Costo unitario</th><th>Inicio</th><th>Fin</th><th>Estado</th><th></th>
+            <th>Costo unitario</th><th>Estado</th><th></th>
           </tr>
         </thead>
         <tbody>${filasPrecios}</tbody>
@@ -287,15 +286,6 @@ function attachDetalleHandlers(proveedorId, precios, archivosCount) {
     btn.addEventListener('click', () => {
       const pr = precios.find((p) => String(p.id) === btn.dataset.id);
       abrirModalPrecio(proveedorId, pr);
-    });
-  });
-
-  document.querySelectorAll('.precio-inactivar').forEach((btn) => {
-    btn.addEventListener('click', async () => {
-      if (!confirm('¿Inactivar este precio? No se eliminará.')) return;
-      const { error } = await supabaseClient.from('precios_proveedores').update({ activo: false }).eq('id', btn.dataset.id);
-      if (error) { alert(`Error al inactivar: ${error.message}`); return; }
-      renderDetalle(proveedorId);
     });
   });
 
@@ -342,13 +332,18 @@ function actualizarUnidadCantidadBase() {
 document.getElementById('np-insumo-buscar').addEventListener('input', (e) => poblarSelectInsumos(e.target.value));
 document.getElementById('np-insumo-select').addEventListener('change', actualizarUnidadCantidadBase);
 
+const btnInactivarPrecio = document.getElementById('btn-inactivar-precio');
+
 function abrirModalPrecio(proveedorId, precioExistente) {
   proveedorActualId = proveedorId;
+  precioEnEdicion = precioExistente || null;
   formPrecio.reset();
   document.getElementById('np-id').value = precioExistente ? precioExistente.id : '';
   modalPrecioTitle.textContent = precioExistente ? 'Editar precio' : 'Agregar precio';
   document.getElementById('np-insumo-buscar').value = '';
   poblarSelectInsumos('');
+
+  btnInactivarPrecio.hidden = !precioExistente;
 
   if (precioExistente) {
     document.getElementById('np-insumo-select').value = precioExistente.insumo_id;
@@ -357,6 +352,7 @@ function abrirModalPrecio(proveedorId, precioExistente) {
     document.getElementById('np-costo').value = precioExistente.costo_presentacion;
     document.getElementById('np-fecha-inicio').value = precioExistente.fecha_inicio;
     document.getElementById('np-fecha-fin').value = precioExistente.fecha_fin || '';
+    btnInactivarPrecio.textContent = precioExistente.activo ? 'Inactivar' : 'Reactivar';
   } else {
     document.getElementById('np-fecha-inicio').value = new Date().toISOString().slice(0, 10);
   }
@@ -367,6 +363,25 @@ function abrirModalPrecio(proveedorId, precioExistente) {
 
 document.getElementById('btn-cancelar-precio').addEventListener('click', () => { modalPrecioOverlay.hidden = true; });
 modalPrecioOverlay.addEventListener('click', (e) => { if (e.target === modalPrecioOverlay) modalPrecioOverlay.hidden = true; });
+
+btnInactivarPrecio.addEventListener('click', async () => {
+  if (!precioEnEdicion) return;
+
+  const activarse = !precioEnEdicion.activo;
+  const mensaje = activarse
+    ? '¿Reactivar este precio?'
+    : '¿Inactivar este precio? No se eliminará.';
+  if (!confirm(mensaje)) return;
+
+  const { error } = await supabaseClient.from('precios_proveedores').update({ activo: activarse }).eq('id', precioEnEdicion.id);
+  if (error) {
+    alert(`Error al actualizar estado: ${error.message}`);
+    return;
+  }
+
+  modalPrecioOverlay.hidden = true;
+  renderDetalle(proveedorActualId);
+});
 
 formPrecio.addEventListener('submit', async (e) => {
   e.preventDefault();

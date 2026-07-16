@@ -16,6 +16,11 @@ const fNombre = document.getElementById('f-nombre');
 const fUnidad = document.getElementById('f-unidad');
 const fCosto = document.getElementById('f-costo');
 const fProveedor = document.getElementById('f-proveedor');
+const costoEfectivoBox = document.getElementById('costo-efectivo-box');
+const costoEfectivoValue = document.getElementById('costo-efectivo-value');
+const proveedorPreferidoBox = document.getElementById('proveedor-preferido-box');
+const fProveedorPreferido = document.getElementById('f-proveedor-preferido');
+const sinPreciosBox = document.getElementById('sin-precios-box');
 const notasBox = document.getElementById('notas-revision-box');
 const estadoActualBox = document.getElementById('estado-actual-box');
 const btnEliminar = document.getElementById('btn-eliminar');
@@ -135,6 +140,10 @@ function abrirModal(modo, insumo) {
   form.reset();
   notasBox.hidden = true;
   estadoActualBox.hidden = true;
+  costoEfectivoBox.hidden = true;
+  proveedorPreferidoBox.hidden = true;
+  sinPreciosBox.hidden = true;
+  fProveedorPreferido.innerHTML = '';
   insumoEnEdicion = modo === 'editar' ? insumo : null;
   btnEliminar.hidden = modo === 'nuevo';
 
@@ -158,9 +167,52 @@ function abrirModal(modo, insumo) {
       notasBox.hidden = false;
       notasBox.textContent = `Nota de revisión: ${insumo.notas_revision}`;
     }
+
+    cargarInfoProveedorInsumo(insumo);
   }
 
   modalOverlay.hidden = false;
+}
+
+async function cargarInfoProveedorInsumo(insumo) {
+  const hoy = new Date().toISOString().slice(0, 10);
+
+  const [{ data: efectivo }, { data: preciosVigentes }] = await Promise.all([
+    supabaseClient.from('v_insumo_costo_efectivo').select('*').eq('insumo_id', insumo.id).maybeSingle(),
+    supabaseClient
+      .from('precios_proveedores')
+      .select('proveedor_id')
+      .eq('insumo_id', insumo.id)
+      .eq('activo', true)
+      .or(`fecha_fin.is.null,fecha_fin.gte.${hoy}`),
+  ]);
+
+  costoEfectivoBox.hidden = !efectivo;
+  if (efectivo) {
+    const tipoTexto = efectivo.es_preferido_manual ? 'fijado manualmente' : 'automático';
+    costoEfectivoValue.textContent = `${moneyFmt.format(efectivo.costo_unitario_efectivo)}/${insumo.unidad_medida} (${efectivo.proveedor_nombre_corto}, ${tipoTexto})`;
+  }
+
+  const proveedorIdsConPrecio = [...new Set((preciosVigentes || []).map((p) => p.proveedor_id))];
+
+  if (proveedorIdsConPrecio.length === 0) {
+    proveedorPreferidoBox.hidden = true;
+    sinPreciosBox.hidden = false;
+    return;
+  }
+
+  sinPreciosBox.hidden = true;
+  proveedorPreferidoBox.hidden = false;
+
+  const { data: proveedoresConPrecio } = await supabaseClient
+    .from('proveedores')
+    .select('id, nombre_corto')
+    .in('id', proveedorIdsConPrecio)
+    .order('nombre_corto', { ascending: true });
+
+  fProveedorPreferido.innerHTML = '<option value="">Automático (más barato)</option>'
+    + (proveedoresConPrecio || []).map((p) => `<option value="${p.id}">${p.nombre_corto}</option>`).join('');
+  fProveedorPreferido.value = insumo.proveedor_preferido_id || '';
 }
 
 function cerrarModal() {
@@ -205,6 +257,7 @@ form.addEventListener('submit', async (e) => {
 
   if (fId.value) {
     payload.updated_at = new Date().toISOString();
+    payload.proveedor_preferido_id = fProveedorPreferido.value || null;
     const { error } = await supabaseClient.from('insumos').update(payload).eq('id', fId.value);
     if (error) {
       alert(`Error al guardar: ${error.message}`);

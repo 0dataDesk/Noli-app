@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NOLI | Proveedores</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍝</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <a class="back-link" id="top-link" href="index.html">← Inicio</a>
+  <div class="session-info">
+    <span class="session-name" id="session-name"></span>
+    <span class="sep">·</span>
+    <button type="button" class="session-logout" id="btn-logout">Salir</button>
+  </div>
+
+  <div class="page">
+    <div class="topbar">
+      <div class="brand">
+        <span>NOLI</span>
+        <h1 id="page-title">Proveedores</h1>
+      </div>
+    </div>
+
+    <!-- Vista lista -->
+    <div id="vista-lista">
+      <div class="toolbar">
+        <input type="search" id="buscador" placeholder="Buscar proveedor por nombre…" />
+        <div class="spacer"></div>
+        <button class="btn-primary" id="btn-nuevo">+ Nuevo proveedor</button>
+      </div>
+      <div id="contenido-lista">
+        <div class="loading">Cargando proveedores…</div>
+      </div>
+    </div>
+
+    <!-- Vista detalle -->
+    <div id="vista-detalle" hidden></div>
+  </div>
+
+  <!-- Modal: nuevo proveedor -->
+  <div class="modal-overlay" id="modal-overlay" hidden>
+    <div class="modal">
+      <h2>Nuevo proveedor</h2>
+      <form id="form-proveedor">
+        <div class="field">
+          <label for="f-nombre">Nombre</label>
+          <input type="text" id="f-nombre" required />
+        </div>
+        <div class="field">
+          <label for="f-nombre-corto">Nombre corto</label>
+          <input type="text" id="f-nombre-corto" required />
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="f-contacto">Contacto</label>
+            <input type="text" id="f-contacto" />
+          </div>
+          <div class="field">
+            <label for="f-telefono">Teléfono</label>
+            <input type="text" id="f-telefono" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="f-email">Email</label>
+          <input type="email" id="f-email" />
+        </div>
+        <div class="field">
+          <label for="f-notas">Notas</label>
+          <textarea id="f-notas"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" id="btn-cancelar">Cancelar</button>
+          <button type="submit" class="btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: agregar/editar precio -->
+  <div class="modal-overlay" id="modal-precio-overlay" hidden>
+    <div class="modal">
+      <h2 id="modal-precio-title">Agregar precio</h2>
+      <form id="form-precio">
+        <input type="hidden" id="np-id" />
+        <div class="field">
+          <label for="np-insumo-buscar">Insumo</label>
+          <input type="text" id="np-insumo-buscar" placeholder="Buscar insumo por nombre…" autocomplete="off" />
+          <select id="np-insumo-select" required style="margin-top:8px;"></select>
+        </div>
+        <div class="field">
+          <label for="np-presentacion">Presentación</label>
+          <input type="text" id="np-presentacion" placeholder="Ej. Bulto 25 kg" required />
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="np-cantidad-base">Cantidad base <span id="np-cantidad-base-unidad" style="text-transform:none;"></span></label>
+            <input type="number" id="np-cantidad-base" step="0.001" min="0" required />
+          </div>
+          <div class="field">
+            <label for="np-costo">Costo presentación (MXN)</label>
+            <input type="number" id="np-costo" step="0.01" min="0" required />
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="np-fecha-inicio">Fecha inicio</label>
+            <input type="date" id="np-fecha-inicio" required />
+          </div>
+          <div class="field">
+            <label for="np-fecha-fin">Fecha fin (opcional)</label>
+            <input type="date" id="np-fecha-fin" />
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" id="btn-cancelar-precio">Cancelar</button>
+          <button type="submit" class="btn-primary" id="btn-guardar-precio">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: subir archivo -->
+  <div class="modal-overlay" id="modal-archivo-overlay" hidden>
+    <div class="modal">
+      <h2>Subir archivo</h2>
+      <form id="form-archivo">
+        <div class="field">
+          <label for="fa-file">Archivo (PDF, XLSX, XLS)</label>
+          <input type="file" id="fa-file" accept=".pdf,.xlsx,.xls" required />
+        </div>
+        <div class="field">
+          <label for="fa-vigencia">Fecha de vigencia</label>
+          <input type="date" id="fa-vigencia" required />
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" id="btn-cancelar-archivo">Cancelar</button>
+          <button type="submit" class="btn-primary" id="btn-guardar-archivo">Subir</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script src="js/supabaseClient.js"></script>
+  <script src="js/proveedores.js"></script>
+</body>
+</html>

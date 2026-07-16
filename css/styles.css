@@ -464,6 +464,27 @@ tbody tr.inactive {
   border: 1px solid var(--border);
 }
 
+.badge-vigente {
+  background: rgba(107, 125, 62, 0.18);
+  color: var(--olive);
+  border: 1px solid rgba(107, 125, 62, 0.45);
+}
+
+.badge-vencido {
+  background: rgba(182, 70, 47, 0.16);
+  color: var(--danger);
+  border: 1px solid rgba(182, 70, 47, 0.4);
+}
+
+.computed-value {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--text);
+}
+
 /* Modal */
 
 .modal-overlay {
@@ -599,6 +620,43 @@ tbody tr.inactive {
   font-size: 24px;
   color: var(--accent);
   letter-spacing: 0.03em;
+}
+
+/* Proveedores */
+
+.proveedor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.proveedor-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.proveedor-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.proveedor-card h3 {
+  font-size: 20px;
+  color: var(--text);
+}
+
+.proveedor-card .proveedor-contacto {
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.4;
+  margin: 0;
 }
 
 /* Receta detalle */

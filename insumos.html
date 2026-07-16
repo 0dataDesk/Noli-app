@@ -73,6 +73,15 @@
           <label for="f-proveedor">Proveedor</label>
           <input type="text" id="f-proveedor" />
         </div>
+        <div class="field" id="costo-efectivo-box" hidden>
+          <label>Costo efectivo actual</label>
+          <div class="computed-value" id="costo-efectivo-value"></div>
+        </div>
+        <div class="field" id="proveedor-preferido-box" hidden>
+          <label for="f-proveedor-preferido">Proveedor preferido</label>
+          <select id="f-proveedor-preferido"></select>
+        </div>
+        <div id="sin-precios-box" hidden style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Sin precios de proveedor capturados.</div>
         <div id="notas-revision-box" hidden style="font-size:13px;color:var(--amber);margin-bottom:12px;"></div>
         <div id="estado-actual-box" class="estado-actual" hidden></div>
         <div class="modal-actions">

@@ -27,6 +27,7 @@ let precioEnEdicion = null;
 let insumosParaSelector = [];
 let insumosByIdSelector = {};
 let pedidoBuilderState = null;
+let esLector = false;
 
 // ---------- Routing ----------
 
@@ -323,6 +324,17 @@ function pintarDetalle(proveedor, precios, archivos, pedidos) {
     </div>
   `;
 
+  if (esLector) {
+    const btnAgregarPrecio = document.getElementById('btn-agregar-precio');
+    if (btnAgregarPrecio) btnAgregarPrecio.hidden = true;
+    const btnSubirArchivo = document.getElementById('btn-subir-archivo');
+    if (btnSubirArchivo) btnSubirArchivo.hidden = true;
+    const btnNuevoPedido = document.getElementById('btn-nuevo-pedido');
+    if (btnNuevoPedido) btnNuevoPedido.hidden = true;
+    document.querySelectorAll('.precio-editar').forEach((btn) => { btn.hidden = true; });
+    document.querySelectorAll('.archivo-eliminar').forEach((btn) => { btn.hidden = true; });
+  }
+
   attachDetalleHandlers(proveedor.id, precios, archivos.length);
 }
 
@@ -574,6 +586,11 @@ async function renderPedido(proveedorId, pedidoId) {
 // ---------- Builder de pedido nuevo ----------
 
 async function renderBuilderPedido(proveedor) {
+  if (esLector) {
+    location.hash = `#proveedor/${proveedor.id}`;
+    return;
+  }
+
   const hoy = new Date().toISOString().slice(0, 10);
 
   const { data: precios, error: errPr } = await supabaseClient
@@ -880,6 +897,13 @@ function pintarPedidoGuardado(proveedor, resumen, items) {
     </div>
   `;
 
+  if (esLector) {
+    const estadoField = document.getElementById('bp-estado');
+    const estadoBox = estadoField ? estadoField.closest('.field') : null;
+    if (estadoBox) estadoBox.hidden = true;
+    document.querySelectorAll('.pedido-item-quitar').forEach((btn) => { btn.hidden = true; });
+  }
+
   attachPedidoGuardadoHandlers(proveedor, resumen, items);
 }
 
@@ -917,5 +941,12 @@ function attachPedidoGuardadoHandlers(proveedor, resumen, items) {
   const session = await requireSession();
   if (!session) return;
   wireSessionUI(session);
+
+  const rol = await obtenerRol(session);
+  esLector = rol === 'lector';
+  if (esLector) {
+    document.getElementById('btn-nuevo').hidden = true;
+  }
+
   render();
 })();

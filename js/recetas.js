@@ -10,6 +10,7 @@ const printContainer = document.getElementById('print-container');
 
 let recetasCache = [];
 let resumenCache = {};
+let esLector = false;
 
 // ---------- Routing ----------
 
@@ -435,6 +436,32 @@ function pintarDetalle(receta, resumen, lineas, pasos, insumosActivos) {
   });
 
   attachDetalleHandlers(receta.id, resumen.costo_total);
+  aplicarModoLectorDetalle();
+}
+
+function aplicarModoLectorDetalle() {
+  if (!esLector) return;
+
+  const guardarBtn = document.getElementById('btn-guardar-flotante');
+  if (guardarBtn) guardarBtn.hidden = true;
+
+  const desactivarBtn = document.getElementById('btn-desactivar-receta');
+  if (desactivarBtn) desactivarBtn.hidden = true;
+
+  const agregarPasoBtn = document.getElementById('btn-agregar-paso');
+  if (agregarPasoBtn) agregarPasoBtn.hidden = true;
+
+  const agregarIngredienteBtn = document.getElementById('btn-agregar-ingrediente');
+  const filaAgregarIngrediente = agregarIngredienteBtn ? agregarIngredienteBtn.closest('div') : null;
+  if (filaAgregarIngrediente) filaAgregarIngrediente.hidden = true;
+
+  document.querySelectorAll('.ing-eliminar, .paso-eliminar').forEach((btn) => { btn.hidden = true; });
+  document.querySelectorAll('.ing-cantidad, .paso-texto').forEach((el) => { el.disabled = true; });
+
+  ['d-nombre', 'd-descripcion', 'd-porcion', 'd-tiempo', 'd-tecnica', 'd-porcentaje', 'd-precio-manual'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = true;
+  });
 }
 
 function attachDetalleHandlers(recetaId, costoTotal) {
@@ -602,5 +629,7 @@ function attachDetalleHandlers(recetaId, costoTotal) {
   const session = await requireSession();
   if (!session) return;
   wireSessionUI(session);
+  const rol = await obtenerRol(session);
+  esLector = rol === 'lector';
   render();
 })();

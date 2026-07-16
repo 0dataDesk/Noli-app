@@ -9,6 +9,16 @@ async function requireSession() {
   return session;
 }
 
+async function obtenerRol(session) {
+  const { data, error } = await supabaseClient
+    .from('perfiles')
+    .select('rol')
+    .eq('id', session.user.id)
+    .maybeSingle();
+  if (error || !data) return 'lector'; // por seguridad, si falla, asume el rol más restrictivo
+  return data.rol;
+}
+
 async function wireSessionUI(session) {
   const nameEl = document.getElementById('session-name');
   if (nameEl) {

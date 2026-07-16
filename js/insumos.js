@@ -4,6 +4,7 @@ let insumos = [];
 let insumoEnEdicion = null;
 let soloPendientes = false;
 let costoFinalPorInsumo = {};
+let esLector = false;
 
 const contenido = document.getElementById('contenido');
 const buscador = document.getElementById('buscador');
@@ -184,6 +185,15 @@ function abrirModal(modo, insumo) {
     cargarInfoProveedorInsumo(insumo);
   }
 
+  const modalActions = form.querySelector('.modal-actions');
+  if (esLector) {
+    modalActions.hidden = true;
+    Array.from(form.elements).forEach((el) => { el.disabled = true; });
+  } else {
+    modalActions.hidden = false;
+    Array.from(form.elements).forEach((el) => { el.disabled = false; });
+  }
+
   modalOverlay.hidden = false;
 }
 
@@ -320,5 +330,12 @@ btnEliminar.addEventListener('click', async () => {
   const session = await requireSession();
   if (!session) return;
   wireSessionUI(session);
+
+  const rol = await obtenerRol(session);
+  esLector = rol === 'lector';
+  if (esLector) {
+    document.getElementById('btn-nuevo').hidden = true;
+  }
+
   cargarInsumos();
 })();

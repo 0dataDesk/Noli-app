@@ -1,9 +1,10 @@
 // Estudio de recetas para empleados — página autónoma, sin sesión.
 // Protegida por geo-valla (Geolocation API): solo carga dentro de NOLI.
 
-const NOLI_LAT = 19.396257;
-const NOLI_LNG = -99.176315;
-const RADIO_METROS = 40;
+const ZONAS = [
+  { nombre: 'NOLI', lat: 19.396257, lng: -99.176315, radio: 40 },
+  { nombre: 'Pruebas dD', lat: 19.32987, lng: -99.10642, radio: 40 },
+];
 
 const gateLoading = document.getElementById('gate-loading');
 const gateBlocked = document.getElementById('gate-blocked');
@@ -50,13 +51,16 @@ function verificarUbicacion() {
   }
   navigator.geolocation.getCurrentPosition(
     (pos) => {
-      const distancia = distanciaMetros(
-        pos.coords.latitude,
-        pos.coords.longitude,
-        NOLI_LAT,
-        NOLI_LNG,
-      );
-      if (distancia <= RADIO_METROS) {
+      const dentroDeAlgunaZona = ZONAS.some((zona) => {
+        const distancia = distanciaMetros(
+          pos.coords.latitude,
+          pos.coords.longitude,
+          zona.lat,
+          zona.lng,
+        );
+        return distancia <= zona.radio;
+      });
+      if (dentroDeAlgunaZona) {
         permitir();
       } else {
         bloquear();

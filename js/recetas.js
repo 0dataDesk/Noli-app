@@ -6,6 +6,7 @@ const contenidoLista = document.getElementById('contenido-lista');
 const buscador = document.getElementById('buscador');
 const pageTitle = document.getElementById('page-title');
 const topLink = document.getElementById('top-link');
+const printContainer = document.getElementById('print-container');
 
 let recetasCache = [];
 let resumenCache = {};
@@ -135,6 +136,63 @@ buscador.addEventListener('input', () => {
   pintarLista(filtrados);
 });
 
+document.getElementById('btn-exportar-todas').addEventListener('click', async (e) => {
+  const btn = e.currentTarget;
+  const textoOriginal = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Preparando…';
+
+  try {
+    if (!recetasCache.length) await cargarRecetas();
+    const recetas = recetasCache;
+    const ids = recetas.map((r) => r.id);
+
+    const [{ data: ingredientes, error: errI }, { data: pasos, error: errP }, { data: insumos, error: errIns }] = await Promise.all([
+      supabaseClient.from('receta_ingredientes').select('*').in('receta_id', ids).eq('activo', true).order('orden', { ascending: true }),
+      supabaseClient.from('receta_procedimientos').select('*').in('receta_id', ids).order('orden', { ascending: true }),
+      supabaseClient.from('insumos').select('id, nombre, unidad_medida').eq('activo', true),
+    ]);
+
+    if (errI || errP || errIns) {
+      alert('Error al preparar la exportación.');
+      return;
+    }
+
+    const insumosById = {};
+    insumos.forEach((i) => { insumosById[i.id] = i; });
+
+    const ingredientesPorReceta = {};
+    ingredientes.forEach((ing) => {
+      if (!ingredientesPorReceta[ing.receta_id]) ingredientesPorReceta[ing.receta_id] = [];
+      ingredientesPorReceta[ing.receta_id].push(ing);
+    });
+
+    const pasosPorReceta = {};
+    pasos.forEach((p) => {
+      if (!pasosPorReceta[p.receta_id]) pasosPorReceta[p.receta_id] = [];
+      pasosPorReceta[p.receta_id].push(p);
+    });
+
+    const grupos = {};
+    recetas.forEach((r) => {
+      if (!grupos[r.categoria]) grupos[r.categoria] = [];
+      grupos[r.categoria].push(r);
+    });
+    const categoriasOrdenadas = Object.keys(grupos).sort();
+
+    const items = categoriasOrdenadas.flatMap((cat) => grupos[cat].map((receta) => ({
+      receta,
+      lineas: construirLineasImprimibles(ingredientesPorReceta[receta.id] || [], insumosById),
+      pasos: pasosPorReceta[receta.id] || [],
+    })));
+
+    imprimirRecetas(items);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = textoOriginal;
+  }
+});
+
 // ---------- Vista detalle ----------
 
 async function renderDetalle(id) {
@@ -186,6 +244,66 @@ function calcularPesoTerminado(lineas) {
   return { pesoTexto: `${Math.round(gramos)} g`, piezas };
 }
 
+// ---------- Impresión ----------
+
+function construirLineasImprimibles(ingredientesReceta, insumosById) {
+  return ingredientesReceta.map((ing) => {
+    const insumo = insumosById[ing.insumo_id] || { nombre: '(insumo inactivo)', unidad_medida: '' };
+    return { ...ing, insumo };
+  });
+}
+
+function renderRecetaImprimible({ receta, lineas, pasos }) {
+  const { pesoTexto } = calcularPesoTerminado(lineas);
+
+  const filasIngredientes = lineas.map((l) => `
+    <li><span>${l.insumo.nombre}</span><span>${l.cantidad} ${l.insumo.unidad_medida}</span></li>
+  `).join('') || '<li>Sin ingredientes.</li>';
+
+  const filasPasos = pasos.map((p) => `<li>${p.texto}</li>`).join('') || '<li>Sin pasos de procedimiento.</li>';
+
+  const apilar = lineas.length > 8 || pasos.length > 10;
+
+  return `
+    <section class="print-receta">
+      <div class="print-header">
+        <div class="print-brand">NOLI</div>
+        <h1 class="print-title">${receta.nombre}</h1>
+        <div class="print-categoria">${receta.categoria || ''}</div>
+      </div>
+      ${receta.descripcion ? `<p class="print-descripcion">${receta.descripcion}</p>` : ''}
+      <div class="print-meta">
+        <span><strong>Porción:</strong> ${receta.porcion_desc || '—'}</span>
+        <span><strong>Peso terminado:</strong> ${pesoTexto}</span>
+        <span><strong>Tiempo:</strong> ${receta.tiempo || '—'}</span>
+        <span><strong>Técnica:</strong> ${receta.tecnica || '—'}</span>
+      </div>
+      <div class="print-columns${apilar ? ' print-stacked' : ''}">
+        <div class="print-ingredientes">
+          <h2>Ingredientes</h2>
+          <ul>${filasIngredientes}</ul>
+        </div>
+        <div class="print-procedimiento">
+          <h2>Procedimiento</h2>
+          <ol>${filasPasos}</ol>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function imprimirRecetas(items) {
+  printContainer.innerHTML = items.map(renderRecetaImprimible).join('');
+
+  const limpiar = () => {
+    printContainer.innerHTML = '';
+    window.removeEventListener('afterprint', limpiar);
+  };
+  window.addEventListener('afterprint', limpiar);
+
+  window.print();
+}
+
 function pintarDetalle(receta, resumen, lineas, pasos, insumosActivos) {
   const badges = [];
   if (receta.tipo === 'Subreceta') badges.push('<span class="badge badge-subreceta">Subreceta</span>');
@@ -222,7 +340,10 @@ function pintarDetalle(receta, resumen, lineas, pasos, insumosActivos) {
   vistaDetalle.innerHTML = `
     ${receta.notas_revision ? `<div class="card" style="border-color:var(--amber);margin-bottom:16px;color:var(--amber);font-size:14px;">Nota de revisión: ${receta.notas_revision}</div>` : ''}
 
-    <div class="badges" style="margin-bottom:10px;">${badges.join('')}</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;">
+      <div class="badges">${badges.join('')}</div>
+      <button type="button" class="btn-ghost btn-sm" id="btn-exportar-receta">🖨️ Exportar</button>
+    </div>
 
     <div class="detalle-grid">
       <div class="card">
@@ -308,6 +429,10 @@ function pintarDetalle(receta, resumen, lineas, pasos, insumosActivos) {
 
     <button type="submit" form="form-receta" class="btn-primary btn-save-floating" id="btn-guardar-flotante">Guardar cambios</button>
   `;
+
+  document.getElementById('btn-exportar-receta').addEventListener('click', () => {
+    imprimirRecetas([{ receta, lineas, pasos }]);
+  });
 
   attachDetalleHandlers(receta.id, resumen.costo_total);
 }

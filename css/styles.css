@@ -952,6 +952,123 @@ tbody tr.inactive {
   }
 }
 
+/* Estudio (repaso de recetas para empleados, sin sesión) */
+
+.estudio-gate {
+  min-height: 70vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  font-size: 17px;
+}
+
+.estudio-header {
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.estudio-categoria {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+
+.estudio-nombre {
+  font-size: 34px;
+  color: var(--accent);
+  margin-top: 4px;
+}
+
+.estudio-descripcion {
+  color: var(--text-muted);
+  font-size: 14px;
+  margin-top: 10px;
+  line-height: 1.5;
+}
+
+.estudio-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin-top: 16px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.estudio-meta strong {
+  color: var(--text);
+}
+
+.estudio-ing-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.estudio-ing-row:last-child {
+  border-bottom: none;
+}
+
+.estudio-ing-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+}
+
+.estudio-ing-row.tachado .estudio-ing-texto {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.estudio-paso-indicador {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.estudio-paso-texto {
+  font-size: 17px;
+  line-height: 1.6;
+  min-height: 120px;
+}
+
+.estudio-paso-dots {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 18px 0;
+}
+
+.estudio-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border);
+}
+
+.estudio-dot.activo {
+  background: var(--accent);
+}
+
+.estudio-paso-nav {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+}
+
 @media (max-width: 720px) {
   .detalle-grid {
     grid-template-columns: 1fr;

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NOLI | Estudio</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍝</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div class="page">
+    <div id="gate-loading" class="estudio-gate">
+      <p>Verificando ubicación…</p>
+    </div>
+
+    <div id="gate-blocked" class="estudio-gate" hidden>
+      <p>Esta herramienta solo está disponible dentro de NOLI.</p>
+    </div>
+
+    <div id="app" hidden>
+      <div class="topbar" style="padding-left:0;">
+        <div class="brand">
+          <span>NOLI</span>
+          <h1>📖 Estudio</h1>
+        </div>
+      </div>
+
+      <div id="vista-lista">
+        <div class="toolbar">
+          <input type="search" id="buscador" placeholder="Buscar receta por nombre…" />
+        </div>
+        <div id="contenido-lista">
+          <div class="loading">Cargando recetas…</div>
+        </div>
+      </div>
+
+      <div id="vista-detalle" hidden></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script src="js/supabaseClient.js"></script>
+  <script src="js/estudio.js"></script>
+</body>
+</html>

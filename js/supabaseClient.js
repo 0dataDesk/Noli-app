@@ -1,4 +1,6 @@
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  db: { schema: 'noli' },
+});
 
 async function requireSession() {
   const { data: { session } } = await supabaseClient.auth.getSession();
